@@ -1,0 +1,37 @@
+{{ define "title"}}
+    <title>Login Page</title>
+{{ end }}
+
+{{ define "content" }}
+
+<nav class="light-blue lighten-1" role="navigation">
+  <div class="nav-wrapper container"><a id="logo-container" href="#" class="brand-logo">CA</a>
+    <ul class="right hide-on-med-and-down">
+      <li><a href="#">Contact</a></li>
+    </ul>
+
+    <ul id="nav-mobile" class="side-nav">
+      <li><a href="#">Navbar Link</a></li>
+    </ul>
+    <a href="#" data-activates="nav-mobile" class="button-collapse"><i class="material-icons">menu</i></a>
+  </div>
+</nav>
+
+
+    <div class="section no-pad-bot" id="index-banner">
+      <div class="container">
+        <br><br>
+        <h1 class="header center orange-text z-depth-1">CHALLENGE ACCEPTED!!</h1>
+        <div class="row center">
+          <h5 class="header col s12 light"><em>Challenge Yourself to Be Everything You Want to Be</em></h5>
+        </div>
+        <div class="row center">
+          <div><a href="/OAuth/Authorize/facebook"><img src="/static/images/fb_login.png" border="0" alt=""></a></div>
+          <div><a href="/OAuth/Authorize/google"><img src="/static/images/google_login.png" border="0" alt=""></a></div>
+
+        </div>
+        <br><br>
+
+      </div>
+    </div>
+{{ end }}

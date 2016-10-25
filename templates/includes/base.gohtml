@@ -1,0 +1,31 @@
+{{ define "base" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no"/>
+
+    {{ template "title" . }}
+
+    <link href="static/external/materializecss/css/materialize.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+    <link href="static/external/materializecss/css/style.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+
+<body bgcolor="#e3f2fd">
+    {{ template "scripts" . }}
+    {{ template "navbar" . }}
+    {{ template "content" . }}
+
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+    <script src="static/external/materializecss/js/materialize.min.js"></script>
+    <script src="static/external/materializecss/js/init.js"></script>
+</body>
+
+</html>
+{{ end }}
+
+// We define empty blocks for optional content so we don't have to define a block in child templates that don't need them
+{{ define "scripts" }}{{ end }}
+{{ define "navbar" }}{{ end }}

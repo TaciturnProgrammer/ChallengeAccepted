@@ -1,0 +1,139 @@
+{{ define "title"}}
+    <title>Your Challenges</title>
+{{ end }}
+
+{{ define "content" }}
+
+<div class="navbar-fixed">
+  <nav class="light-blue lighten-1" role="navigation">
+    <div class="nav-wrapper container">
+      <a id="logo-container" href="#" class="brand-logo">Logo</a>
+      <ul class="right hide-on-med-and-down">
+        <li><a href="#"><img src="{{ .User.AvatarURL }}" style="width:50px; height:50px" alt="" class="circle responsive-img"></a></li>
+        <li><a href="/app/logout">Logout</a></li>
+      </ul>
+
+      <ul id="nav-mobile" class="side-nav">
+        <li><a href="/app/logout">Logout</a></li>
+      </ul>
+      <a href="#" data-activates="nav-mobile" class="button-collapse"><i class="material-icons">menu</i></a>
+    </div>
+  </nav>
+</div>
+
+
+
+<div class="container">
+  <div class="row">
+    {{with .Challenges}}
+      {{range .}}
+      {{$challenge := .}}
+
+              <div id="{{ $challenge.CID }}" class="col s12 m6 l4 challengeCards">
+                <div class="card red hoverable">
+                  <div class="card-content white-text">
+                    <div >
+                      <span class="card-title">{{ $challenge.Activity }}</span><span style="font-weight: 200;font-size:1em"> ending {{ $challenge.EndTime }}</span>
+                    </div>
+                    <div>
+                        {{ $challenge.Progress }} {{ $challenge.Metric }} completed.
+                        <br>
+                        <em>You are {{$challenge.Status}}.</em>
+                    </div>
+                    <br>
+
+                    <div style="font-weight: 200" class="left">
+                      Your Progress:
+                    </div>
+                    <div style="font-weight: 200" class="right">
+                      {{ $challenge.Progress }}/{{ $challenge.Target }}
+                    </div>
+                    <div class="progress">
+                      <div class="determinate" style="width: 70%"></div>
+                    </div>
+                    <!-- <div class="progress">
+                      <div class="determinate" style="width: 30%"></div>
+                    </div>
+                    <div style="font-weight: 200" class="left">
+                      02/12/2016
+                    </div>
+                    <div style="font-weight: 200" class="right">
+                      12/12/2016
+                    </div>
+                    -->
+
+
+                  </div>
+                  <div class="card-action">
+                    <form action="/editChallenge" method="post">
+                        <input type="hidden" name="Id" value="{{ $challenge.CID }}"/>
+                        <button type="submit" class="waves-effect btn blue left"><i class="material-icons">edit</i></button>
+                    </form>
+                    <form action="/deleteChallenge" method="post">
+                        <input type="hidden" name="Id" value="{{ $challenge.CID }}"/>
+                        <button type="submit" class="waves-effect btn red darken-4 right"><i class="material-icons">delete</i></button>
+                    </form>
+
+                  </div>
+                </div>
+              </div>
+      {{end}}
+      {{end}}
+    </div>
+</div>
+
+<div class="fixed-action-btn" style="bottom: 45px; right: 24px;">
+  <a class="btn-floating btn-large waves-effect waves-light yellow darken-4 modal-trigger" href="#modal1"><i class="large material-icons">add</i></a>
+</div>
+
+<!-- Modal Structure -->
+<div id="modal1" class="modal">
+    <div class="modal-content">
+        <form action="/addChallenge" method="post">
+
+                <div class="row">
+                    <h3>I want to</h3>
+                </div>
+
+                <div class="row">
+                <div class="input-field col">
+                    <input id="Activity" name="Activity" type="text" class="validate">
+                    <label for="Activity">Activity</label>
+                </div>
+
+                <div class="row">
+                <div class="input-field col">
+                    <input id="Target" name="Target" type="text" class="validate">
+                    <label for="Target">Target</label>
+                </div>
+
+                </div>
+                <div class="row">
+                <div class="input-field col">
+                    <input id="Metric" name="Metric" type="text" class="validate">
+                    <label for="Metric">Metric</label>
+                </div>
+                </div>
+
+                <div class="row">
+                <div class="col">
+                    <h3>before</h3>
+                </div>
+                </div>
+
+                <div class="row">
+                <div class="input-field col">
+                    <input id="EndTime" name="EndTime" type="date" class="datepicker">
+                    <label for="EndTime">EndDate</label>
+                </div>
+                </div>
+                <button type="submit" class="waves-effect btn teal darken-4 right"><i class="material-icons">submit</i></button>
+
+            </div>
+        </form>
+        <div class="modal-footer">
+          <a href="#!" class=" modal-action modal-close waves-effect waves-green btn-flat">Agree</a>
+        </div>
+</div>
+
+{{ end }}
