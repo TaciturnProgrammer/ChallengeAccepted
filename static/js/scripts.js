@@ -43,4 +43,6 @@ $(function () {
 
     $('.progress-bar').each(function(){
     });
+
+    
 });

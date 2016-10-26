@@ -8,14 +8,17 @@ import (
 	"path/filepath"
 
 	"github.com/gorilla/mux"
-
 	"github.com/gorilla/sessions"
 	"github.com/taciturnprogrammer/challengeaccepted/auth"
 	"github.com/taciturnprogrammer/challengeaccepted/middleware"
+	"github.com/taciturnprogrammer/challengeaccepted/models"
+
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
 )
+
+var dateFormat = os.Getenv("DATEFORMAT")
 
 var templatesDir = "../templates/"
 
@@ -50,6 +53,9 @@ func init() {
 	approuter := router.PathPrefix("/app/").Subrouter()
 	approuter.HandleFunc("/home", homePageHandler)
 	approuter.HandleFunc("/logout", logoutHandler)
+	approuter.HandleFunc("/addChallenge", createChallenge).Methods("POST")
+	approuter.HandleFunc("/editChallenge", editChallenge).Methods("POST")
+	approuter.HandleFunc("/deleteChallenge", deleteChallenge).Methods("POST")
 	http.Handle("/app/", middleware.AuthMiddleware(approuter))
 
 	router.HandleFunc("/", landingPageHandler)
@@ -91,16 +97,20 @@ func homePageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Get user data from datastore
-	var user auth.User
-	err := datastore.Get(ctx, datastore.NewKey(ctx, "User", useremail.(string), 0, nil), &user)
+	var user models.User
+	userKey := datastore.NewKey(ctx, "User", useremail.(string), 0, nil)
+	err := datastore.Get(ctx, userKey, &user)
 	if err != nil {
 		log.Errorf(ctx, "authenticationHandler : Error in retrieving user from datastore")
 		http.Redirect(w, r, "/", 500)
 		return
 	}
 
+	challenges := models.GetAllChallenges(r, userKey)
+
 	var tmplData = make(map[string]interface{})
 	tmplData["User"] = user
+	tmplData["Challenges"] = challenges
 
 	renderTemplate(w, "home.gohtml", tmplData)
 }
@@ -128,4 +138,33 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, cookie)
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func createChallenge(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+
+	session, _ := store.Get(r, "session")
+	useremail := session.Values["user"]
+	if useremail == nil {
+		//if logged in redirect to home
+		renderTemplate(w, "landing.gohtml", nil)
+		log.Infof(ctx, "No user in session")
+		return
+	}
+
+	err := models.NewChallenge(r, useremail.(string))
+	if err != "" {
+		fmt.Fprintf(w, err)
+	}
+
+	http.Redirect(w, r, "/app/home", http.StatusSeeOther)
+}
+
+func editChallenge(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func deleteChallenge(w http.ResponseWriter, r *http.Request) {
+	models.DeleteChallenge(r)
+	http.Redirect(w, r, "/app/home", http.StatusSeeOther)
 }
