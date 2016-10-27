@@ -102,7 +102,7 @@ func homePageHandler(w http.ResponseWriter, r *http.Request) {
 	err := datastore.Get(ctx, userKey, &user)
 	if err != nil {
 		log.Errorf(ctx, "authenticationHandler : Error in retrieving user from datastore")
-		http.Redirect(w, r, "/", 500)
+		renderTemplate(w, "landing.gohtml", nil)
 		return
 	}
 
@@ -124,6 +124,7 @@ func authenticationHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Errorf(ctx, "authenticationHandler : Error in creating user")
 		http.Redirect(w, r, "/", 500)
+		return
 	}
 
 	http.Redirect(w, r, "/app/home", http.StatusTemporaryRedirect)
