@@ -20,7 +20,9 @@ import (
 
 var dateFormat = os.Getenv("DATEFORMAT")
 
-var templatesDir = "../templates/"
+var templatesDir = "templates/"
+var layouts []string
+var includes []string
 
 var templates map[string]*template.Template
 
@@ -32,8 +34,8 @@ func init() {
 		templates = make(map[string]*template.Template)
 	}
 
-	layouts, _ := filepath.Glob(templatesDir + "layouts/*.gohtml")
-	includes, _ := filepath.Glob(templatesDir + "includes/*.gohtml")
+	layouts, _ = filepath.Glob(templatesDir + "layouts/*.gohtml")
+	includes, _ = filepath.Glob(templatesDir + "includes/*.gohtml")
 
 	// Generate our templates map from our layouts/ and includes/ directories
 	for _, layout := range layouts {
@@ -63,10 +65,12 @@ func init() {
 
 }
 
-func renderTemplate(w http.ResponseWriter, name string, data map[string]interface{}) error {
+func renderTemplate(w http.ResponseWriter, r *http.Request, name string, data map[string]interface{}) error {
+	ctx := appengine.NewContext(r)
 	// Ensure the template exists in the map.
 	tmpl, ok := templates[name]
 	if !ok {
+		log.Errorf(ctx, "No Template", tmpl)
 		return fmt.Errorf("The template %s does not exist.", name)
 	}
 
@@ -75,10 +79,12 @@ func renderTemplate(w http.ResponseWriter, name string, data map[string]interfac
 }
 
 func landingPageHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
 	session, _ := store.Get(r, "session")
 	if session.IsNew || session.Values["user"] == nil {
 		//not logged in, show login page
-		renderTemplate(w, "landing.gohtml", nil)
+		log.Errorf(ctx, "in landingPageHandler: ", layouts, includes)
+		renderTemplate(w, r, "landing.gohtml", nil)
 		return
 	}
 	http.Redirect(w, r, "/app/home", 302)
@@ -91,8 +97,9 @@ func homePageHandler(w http.ResponseWriter, r *http.Request) {
 	useremail := session.Values["user"]
 	if useremail == nil {
 		//if logged in redirect to home
-		renderTemplate(w, "landing.gohtml", nil)
+		renderTemplate(w, r, "landing.gohtml", nil)
 		log.Infof(ctx, "No user in session")
+		log.Errorf(ctx, "in landingPageHandler: ", layouts, includes)
 		return
 	}
 
@@ -102,7 +109,7 @@ func homePageHandler(w http.ResponseWriter, r *http.Request) {
 	err := datastore.Get(ctx, userKey, &user)
 	if err != nil {
 		log.Errorf(ctx, "authenticationHandler : Error in retrieving user from datastore")
-		renderTemplate(w, "landing.gohtml", nil)
+		renderTemplate(w, r, "landing.gohtml", nil)
 		return
 	}
 
@@ -112,7 +119,7 @@ func homePageHandler(w http.ResponseWriter, r *http.Request) {
 	tmplData["User"] = user
 	tmplData["Challenges"] = challenges
 
-	renderTemplate(w, "home.gohtml", tmplData)
+	renderTemplate(w, r, "home.gohtml", tmplData)
 }
 
 func authenticationHandler(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +155,7 @@ func createChallenge(w http.ResponseWriter, r *http.Request) {
 	useremail := session.Values["user"]
 	if useremail == nil {
 		//if logged in redirect to home
-		renderTemplate(w, "landing.gohtml", nil)
+		renderTemplate(w, r, "landing.gohtml", nil)
 		log.Infof(ctx, "No user in session")
 		return
 	}

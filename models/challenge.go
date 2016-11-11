@@ -31,7 +31,7 @@ var dateFormat = os.Getenv("DATEFORMAT")
 //NewChallenge creates new challenge for the user
 func NewChallenge(r *http.Request, useremail string) string {
 	ctx := appengine.NewContext(r)
-
+	userDate := r.FormValue("currentDate")
 	targetString := r.FormValue("Target")
 	endTimeString := r.FormValue("EndTime")
 	activity := r.FormValue("Activity")
@@ -44,7 +44,7 @@ func NewChallenge(r *http.Request, useremail string) string {
 
 	endTime, err := time.Parse(dateFormat, endTimeString)
 	if err != nil {
-		log.Infof(ctx, "endTime err:%v", err)
+		log.Errorf(ctx, "endTime err:%v", err)
 	}
 
 	target, err := strconv.Atoi(targetString)
@@ -52,10 +52,17 @@ func NewChallenge(r *http.Request, useremail string) string {
 		return "Target should be a number"
 	}
 
-	timeNow := time.Now().Format(dateFormat)
-	startTime, _ := time.Parse(dateFormat, timeNow)
+	log.Infof(ctx, "userDate", userDate)
+
+	startTime, err := time.Parse(dateFormat, userDate)
+	if err != nil {
+		log.Errorf(ctx, "Error in creating startTime", err)
+	}
+
+	log.Infof(ctx, "startTime", startTime)
 
 	if startTime == endTime {
+		log.Errorf(ctx, "End date should not be today's date", startTime, endTime)
 		return "End date should not be today's date"
 	}
 
@@ -74,6 +81,60 @@ func NewChallenge(r *http.Request, useremail string) string {
 	if err != nil {
 		log.Errorf(ctx, "Error in creating challenge")
 	}
+	return ""
+}
+
+//EditChallenge edits the challenge for the user
+func EditChallenge(r *http.Request, useremail string) string {
+	ctx := appengine.NewContext(r)
+
+	endTimeString := r.FormValue("editEndTime")
+	progressString := r.FormValue("editProgress")
+	keyID := r.FormValue("editId")
+
+	if progressString == "" {
+		return "Please check your info"
+	}
+
+	progress, err := strconv.Atoi(progressString)
+	if err != nil {
+		return "Progress should be a number"
+	}
+
+	challengeKey, err := datastore.DecodeKey(keyID)
+	if err != nil {
+		log.Errorf(ctx, "Error in decoding key", keyID)
+		return "Internal error"
+	}
+
+	challenge := Challenge{}
+
+	err = datastore.Get(ctx, challengeKey, &challenge)
+	if err != nil {
+		log.Errorf(ctx, "Error in datastore.Get", err)
+		return "Internal error"
+	}
+
+	if challenge.Target >= progress {
+		challenge.Progress = progress
+	} else {
+		return "Progress cannot be greater than Target"
+	}
+
+	if endTimeString != "" {
+		endTime, err := time.Parse(dateFormat, endTimeString)
+		if err != nil {
+			log.Infof(ctx, "endTime err:%v", err)
+		}
+		challenge.EndTime = endTime
+	}
+
+	_, err = datastore.Put(ctx, challengeKey, &challenge)
+	if err != nil {
+		log.Errorf(ctx, "Error in putting challenge", err)
+		return "Internal error"
+	}
+
 	return ""
 }
 
@@ -115,11 +176,14 @@ func getCurrentStatus(c *Challenge) string {
 //DeleteChallenge deletes chalenge by given id
 func DeleteChallenge(r *http.Request) {
 	ctx := appengine.NewContext(r)
-	id := r.FormValue("Id")
+	id := r.FormValue("deleteId")
 	key, err := datastore.DecodeKey(id)
 	if err != nil {
-		log.Infof(ctx, "Requested URL: %q", id)
+		log.Errorf(ctx, "DeleteChallenge", err, id, key)
 	}
 
 	err = datastore.Delete(ctx, key)
+	if err != nil {
+		log.Errorf(ctx, "datastore.Delete(ctx, key)", key, err)
+	}
 }

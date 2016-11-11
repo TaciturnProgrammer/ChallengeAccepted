@@ -18,7 +18,7 @@ var (
 	facebookOAuthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("FACEBOOK_CLIENTID"),
 		ClientSecret: os.Getenv("FACEBOOK_CLIENTSECRET"),
-		RedirectURL:  "http://localhost:8080/OAuth/Callback/facebook",
+		RedirectURL:  os.Getenv("FACEBOOK_REDIRECT_URL"),
 		Scopes:       []string{"email", "public_profile"},
 		Endpoint:     fb.Endpoint,
 	}
