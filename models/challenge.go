@@ -22,7 +22,7 @@ type Challenge struct {
 	StartTime       time.Time
 	EndTime         time.Time
 	Status          string
-	ProgressPercent int `datastore:"-"`
+	ProgressPercent int
 	Difference      int `datastore:"-"`
 }
 
@@ -74,6 +74,8 @@ func NewChallenge(r *http.Request, useremail string) string {
 		StartTime: startTime,
 		Metric:    metric,
 	}
+	challenge.Status = getCurrentStatus(challenge)
+	challenge.ProgressPercent = int((float64(challenge.Progress) / float64(challenge.Target)) * 100)
 
 	userKey := datastore.NewKey(ctx, "User", useremail, 0, nil)
 	challengeKey := datastore.NewIncompleteKey(ctx, "Challenge", userKey)
@@ -129,6 +131,9 @@ func EditChallenge(r *http.Request, useremail string) string {
 		challenge.EndTime = endTime
 	}
 
+	challenge.Status = getCurrentStatus(&challenge)
+	challenge.ProgressPercent = int((float64(challenge.Progress) / float64(challenge.Target)) * 100)
+
 	_, err = datastore.Put(ctx, challengeKey, &challenge)
 	if err != nil {
 		log.Errorf(ctx, "Error in putting challenge", err)
@@ -142,7 +147,27 @@ func EditChallenge(r *http.Request, useremail string) string {
 func GetAllChallenges(r *http.Request, userKey *datastore.Key) []Challenge {
 	ctx := appengine.NewContext(r)
 
-	query := datastore.NewQuery("Challenge").Ancestor(userKey).Order("EndTime")
+	query := datastore.NewQuery("Challenge").Ancestor(userKey).Filter("ProgressPercent <", 100).Order("ProgressPercent").Order("EndTime")
+
+	challenges := []Challenge{}
+
+	keys, err := query.GetAll(ctx, &challenges)
+	if err != nil {
+		log.Errorf(ctx, "Error fetching the challenges: GetAll: ", err)
+	}
+
+	for i, key := range keys {
+		challenges[i].CID = key.Encode()
+		challenges[i].Status = getCurrentStatus(&challenges[i])
+	}
+	return challenges
+}
+
+//GetAllCompletedChallenges returns all the completed challenges for the user
+func GetAllCompletedChallenges(r *http.Request, userKey *datastore.Key) []Challenge {
+	ctx := appengine.NewContext(r)
+
+	query := datastore.NewQuery("Challenge").Filter("ProgressPercent =", 100).Ancestor(userKey)
 
 	challenges := []Challenge{}
 
@@ -159,6 +184,10 @@ func GetAllChallenges(r *http.Request, userKey *datastore.Key) []Challenge {
 }
 
 func getCurrentStatus(c *Challenge) string {
+	if c.Target == c.Progress {
+		return "You are done."
+	}
+
 	timeElapsedPercent := time.Since(c.StartTime).Hours() / c.EndTime.Sub(c.StartTime).Hours() * 100
 	c.ProgressPercent = int((float64(c.Progress) / float64(c.Target)) * 100)
 
