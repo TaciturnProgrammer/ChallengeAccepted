@@ -14,16 +14,16 @@ import (
 
 //Challenge holds the data for a challenge
 type Challenge struct {
-	CID             string `datastore:"-"`
-	Activity        string
 	Progress        int
 	Target          int
-	Metric          string
-	StartTime       time.Time
-	EndTime         time.Time
-	Status          string
 	ProgressPercent int
 	Difference      int `datastore:"-"`
+	Metric          string
+	Status          string
+	CID             string `datastore:"-"`
+	Activity        string
+	StartTime       time.Time
+	EndTime         time.Time
 }
 
 var dateFormat = os.Getenv("DATEFORMAT")
