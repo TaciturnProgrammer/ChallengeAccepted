@@ -29,7 +29,7 @@ type Challenge struct {
 var dateFormat = os.Getenv("DATEFORMAT")
 
 //NewChallenge creates new challenge for the user
-func NewChallenge(r *http.Request, useremail string) string {
+func NewChallenge(r *http.Request, user *User) string {
 	ctx := appengine.NewContext(r)
 	userDate := r.FormValue("currentDate")
 	targetString := r.FormValue("Target")
@@ -77,7 +77,7 @@ func NewChallenge(r *http.Request, useremail string) string {
 	challenge.Status = getCurrentStatus(challenge)
 	challenge.ProgressPercent = int((float64(challenge.Progress) / float64(challenge.Target)) * 100)
 
-	userKey := datastore.NewKey(ctx, "User", useremail, 0, nil)
+	userKey := getUserKey(r, user)
 	challengeKey := datastore.NewIncompleteKey(ctx, "Challenge", userKey)
 	_, err = datastore.Put(ctx, challengeKey, challenge)
 	if err != nil {
@@ -87,7 +87,7 @@ func NewChallenge(r *http.Request, useremail string) string {
 }
 
 //EditChallenge edits the challenge for the user
-func EditChallenge(r *http.Request, useremail string) string {
+func EditChallenge(r *http.Request) string {
 	ctx := appengine.NewContext(r)
 
 	endTimeString := r.FormValue("editEndTime")
@@ -144,9 +144,9 @@ func EditChallenge(r *http.Request, useremail string) string {
 }
 
 //GetAllChallenges returns all the challenges for the user
-func GetAllChallenges(r *http.Request, userKey *datastore.Key) []Challenge {
+func GetAllChallenges(r *http.Request, user *User) []Challenge {
 	ctx := appengine.NewContext(r)
-
+	userKey := getUserKey(r, user)
 	query := datastore.NewQuery("Challenge").Ancestor(userKey).Filter("ProgressPercent <", 100).Order("ProgressPercent").Order("EndTime")
 
 	challenges := []Challenge{}
@@ -164,9 +164,9 @@ func GetAllChallenges(r *http.Request, userKey *datastore.Key) []Challenge {
 }
 
 //GetAllCompletedChallenges returns all the completed challenges for the user
-func GetAllCompletedChallenges(r *http.Request, userKey *datastore.Key) []Challenge {
+func GetAllCompletedChallenges(r *http.Request, user *User) []Challenge {
 	ctx := appengine.NewContext(r)
-
+	userKey := getUserKey(r, user)
 	query := datastore.NewQuery("Challenge").Filter("ProgressPercent =", 100).Ancestor(userKey)
 
 	challenges := []Challenge{}
@@ -215,4 +215,9 @@ func DeleteChallenge(r *http.Request) {
 	if err != nil {
 		log.Errorf(ctx, "datastore.Delete(ctx, key)", key, err)
 	}
+}
+
+func getUserKey(r *http.Request, u *User) *datastore.Key {
+	ctx := appengine.NewContext(r)
+	return datastore.NewKey(ctx, "User", u.Email, 0, nil)
 }

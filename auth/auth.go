@@ -2,10 +2,9 @@ package auth
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
+
 	uuid "github.com/satori/go.uuid"
 
 	"google.golang.org/appengine"
@@ -18,7 +17,6 @@ const facebook = "facebook"
 var (
 	//oauthStateString is some random string, random for each request
 	oauthStateString = uuid.NewV4().String()
-	store            = sessions.NewCookieStore([]byte(os.Getenv("SESSION_SECRET_KEY")))
 )
 
 //OAuthHandler handles the OAuth provider type
@@ -55,19 +53,6 @@ func OAuthCallbackHandler(w http.ResponseWriter, r *http.Request) *User {
 		user = googleOAuthHandler(w, r)
 	} else if provider == facebook {
 		user = facebookOAuthHandler(w, r)
-	}
-
-	//create session with user email
-	session, err := store.Get(r, "session")
-	if err != nil {
-		log.Errorf(ctx, "OAuthCallbackHandler : Error in getting session")
-	}
-
-	session.Values["user"] = user.Email
-
-	err = session.Save(r, w)
-	if err != nil {
-		log.Errorf(ctx, "OAuthCallbackHandler : Error in creating session")
 	}
 
 	return user
