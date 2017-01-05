@@ -77,7 +77,7 @@ func NewChallenge(r *http.Request, user *User) string {
 	challenge.Status = getCurrentStatus(challenge)
 	challenge.ProgressPercent = int((float64(challenge.Progress) / float64(challenge.Target)) * 100)
 
-	userKey := getUserKey(r, user)
+	userKey := GetUserKey(r, user.Email)
 	challengeKey := datastore.NewIncompleteKey(ctx, "Challenge", userKey)
 	_, err = datastore.Put(ctx, challengeKey, challenge)
 	if err != nil {
@@ -146,7 +146,7 @@ func EditChallenge(r *http.Request) string {
 //GetAllChallenges returns all the challenges for the user
 func GetAllChallenges(r *http.Request, user *User) []Challenge {
 	ctx := appengine.NewContext(r)
-	userKey := getUserKey(r, user)
+	userKey := GetUserKey(r, user.Email)
 	query := datastore.NewQuery("Challenge").Ancestor(userKey).Filter("ProgressPercent <", 100).Order("ProgressPercent").Order("EndTime")
 
 	challenges := []Challenge{}
@@ -166,7 +166,7 @@ func GetAllChallenges(r *http.Request, user *User) []Challenge {
 //GetAllCompletedChallenges returns all the completed challenges for the user
 func GetAllCompletedChallenges(r *http.Request, user *User) []Challenge {
 	ctx := appengine.NewContext(r)
-	userKey := getUserKey(r, user)
+	userKey := GetUserKey(r, user.Email)
 	query := datastore.NewQuery("Challenge").Filter("ProgressPercent =", 100).Ancestor(userKey)
 
 	challenges := []Challenge{}
@@ -215,9 +215,4 @@ func DeleteChallenge(r *http.Request) {
 	if err != nil {
 		log.Errorf(ctx, "datastore.Delete(ctx, key)", key, err)
 	}
-}
-
-func getUserKey(r *http.Request, u *User) *datastore.Key {
-	ctx := appengine.NewContext(r)
-	return datastore.NewKey(ctx, "User", u.Email, 0, nil)
 }

@@ -3,6 +3,8 @@ package models
 import (
 	"net/http"
 
+	"golang.org/x/net/context"
+
 	"google.golang.org/appengine"
 	"google.golang.org/appengine/datastore"
 	"google.golang.org/appengine/log"
@@ -13,6 +15,14 @@ type Friend struct {
 	Status  int //  0 - Request sent, 1 - Incoming Request, 2 - we are friends yay!!, 3 - Get off my lawn!!, 4 - We are not friends Anymore
 	UserKey *datastore.Key
 }
+
+const (
+	s0 = iota
+	s1 = iota
+	s2 = iota
+	s3 = iota
+	s4 = iota
+)
 
 //GetAllFriends for the user
 func GetAllFriends(r *http.Request, user *User) []Friend {
@@ -37,38 +47,51 @@ func NewFriendRequest(r *http.Request, user *User) {
 	if err != nil {
 		log.Errorf(ctx, "Error Decoding recipientUserKey from request : NewFriendRequest()", err, keyID)
 	}
+	trasnactionoptions := &datastore.TransactionOptions{
+		XG:       true,
+		Attempts: 3,
+	}
+	err = datastore.RunInTransaction(ctx, func(ctx context.Context) error {
+		//add friend to sender
+		senderFriendKindKey := datastore.NewKey(ctx, "Friend", keyID, 0, senderUserKey)
+		senderFriend := Friend{
+			Status:  s0,
+			UserKey: recipientUserKey,
+		}
 
-	friendKindKey := datastore.NewKey(ctx, "Friend", keyID, 0, senderUserKey)
-	senderFriend := Friend{}
-	err = datastore.Get(ctx, friendKindKey, &senderFriend)
+		_, err = datastore.Put(ctx, senderFriendKindKey, &senderFriend)
+		if err != nil {
+			log.Errorf(ctx, "Error putting senderFriendKindKey in datastore", err, senderFriendKindKey)
+			return err
+		}
+
+		//add friend to reciever
+		friendKindKey := datastore.NewKey(ctx, "Friend", senderUserKey.Encode(), 0, recipientUserKey)
+		reciepientFriend := Friend{
+			Status:  s1,
+			UserKey: senderUserKey,
+		}
+
+		_, err = datastore.Put(ctx, friendKindKey, &reciepientFriend)
+		if err != nil {
+			log.Errorf(ctx, "Error putting friendKindKey in datastore", err)
+			return err
+		}
+
+		err = UpdateNotifications(r, recipientUserKey, 1, 0)
+		log.Infof(ctx, "models.NewFriendRequest: UpdateNotifications", recipientUserKey)
+		if err != nil {
+			log.Errorf(ctx, "Error models.NewFriendRequest: UpdateNotifications", err)
+			return err
+		}
+
+		return err
+	}, trasnactionoptions)
 	if err != nil {
-		log.Errorf(ctx, "Error Getting friendKindKey in datastore", err)
-	}
-
-	senderFriend = Friend{
-		Status:  0,
-		UserKey: recipientUserKey,
-	}
-
-	_, err = datastore.Put(ctx, friendKindKey, &senderFriend)
-	if err != nil {
-		log.Errorf(ctx, "Error putting friendKindKey in datastore", err)
-	}
-
-	friendKindKey = datastore.NewKey(ctx, "Friend", senderUserKey.Encode(), 0, recipientUserKey)
-	reciepientFriend := Friend{}
-	err = datastore.Get(ctx, friendKindKey, &reciepientFriend)
-	if err != nil {
-		log.Errorf(ctx, "Error Getting friendKindKey in datastore", err)
-	}
-	reciepientFriend = Friend{
-		Status:  1,
-		UserKey: senderUserKey,
-	}
-
-	_, err = datastore.Put(ctx, friendKindKey, &reciepientFriend)
-	if err != nil {
-		log.Errorf(ctx, "Error putting friendKindKey in datastore", err)
+		log.Errorf(ctx, "Transaction failed: %v", err)
+		var w http.ResponseWriter
+		http.Error(w, "Internal Server Error", 500)
+		return
 	}
 }
 
