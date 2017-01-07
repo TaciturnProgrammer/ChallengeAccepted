@@ -37,7 +37,6 @@ func UpdateNotifications(r *http.Request, userKey *datastore.Key, friends int, c
 	notification := &Notifications{}
 	query := datastore.NewQuery("Notifications").Ancestor(userKey).KeysOnly()
 	keys, err := query.GetAll(ctx, nil)
-	log.Infof(ctx, "models.Notifications: UpdateNotifications : Error in getting Notifications", userKey, keys)
 	if err != nil {
 		log.Errorf(ctx, "models.Notifications: UpdateNotifications : Error in getting Notifications", err)
 		return err
