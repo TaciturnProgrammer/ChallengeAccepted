@@ -34,7 +34,14 @@ func RecoverHandler(h http.Handler) http.Handler {
 			ctx := appengine.NewContext(r)
 			if err := recover(); err != nil {
 				log.Criticalf(ctx, "panic: %+v", err)
-				http.Error(w, http.StatusText(500), 500)
+				cookie := &http.Cookie{
+					Name:   "session",
+					Value:  "",
+					Path:   "/",
+					MaxAge: -1,
+				}
+				http.SetCookie(w, cookie)
+				http.Redirect(w, r, "/", http.StatusSeeOther)
 			}
 		}()
 

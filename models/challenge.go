@@ -24,6 +24,7 @@ type Challenge struct {
 	Activity        string
 	StartTime       time.Time
 	EndTime         time.Time
+	Public          bool //if private value is flase
 }
 
 var dateFormat = os.Getenv("DATEFORMAT")
@@ -31,11 +32,14 @@ var dateFormat = os.Getenv("DATEFORMAT")
 //NewChallenge creates new challenge for the user
 func NewChallenge(r *http.Request, user *User) string {
 	ctx := appengine.NewContext(r)
+	r.ParseForm()
 	userDate := r.FormValue("currentDate")
 	targetString := r.FormValue("Target")
 	endTimeString := r.FormValue("EndTime")
 	activity := r.FormValue("Activity")
 	metric := r.FormValue("Metric")
+	publicBox := r.Form["Public"]
+	log.Infof(ctx, "publicBox:", publicBox)
 
 	if targetString == "" || endTimeString == "" || activity == "" || metric == "" {
 
@@ -65,7 +69,12 @@ func NewChallenge(r *http.Request, user *User) string {
 		log.Errorf(ctx, "End date should not be today's date", startTime, endTime)
 		return "End date should not be today's date"
 	}
+	public := false
+	if len(publicBox) != 0 {
+		public = true
+	}
 
+	log.Infof(ctx, "public:", public)
 	challenge := &Challenge{
 		Activity:  activity,
 		Progress:  0,
@@ -73,6 +82,7 @@ func NewChallenge(r *http.Request, user *User) string {
 		EndTime:   endTime,
 		StartTime: startTime,
 		Metric:    metric,
+		Public:    public,
 	}
 	challenge.Status = getCurrentStatus(challenge)
 	challenge.ProgressPercent = int((float64(challenge.Progress) / float64(challenge.Target)) * 100)
@@ -89,10 +99,16 @@ func NewChallenge(r *http.Request, user *User) string {
 //EditChallenge edits the challenge for the user
 func EditChallenge(r *http.Request) string {
 	ctx := appengine.NewContext(r)
-
+	r.ParseForm()
 	endTimeString := r.FormValue("editEndTime")
 	progressString := r.FormValue("editProgress")
 	keyID := r.FormValue("editId")
+	publicBox := r.Form["Public"]
+
+	public := false
+	if len(publicBox) != 0 {
+		public = true
+	}
 
 	if progressString == "" {
 		return "Please check your info"
@@ -133,6 +149,7 @@ func EditChallenge(r *http.Request) string {
 
 	challenge.Status = getCurrentStatus(&challenge)
 	challenge.ProgressPercent = int((float64(challenge.Progress) / float64(challenge.Target)) * 100)
+	challenge.Public = public
 
 	_, err = datastore.Put(ctx, challengeKey, &challenge)
 	if err != nil {
@@ -143,11 +160,31 @@ func EditChallenge(r *http.Request) string {
 	return ""
 }
 
-//GetAllChallenges returns all the challenges for the user
-func GetAllChallenges(r *http.Request, user *User) []Challenge {
+//GetAllInProgressChallenges returns all the challenges for the user
+func GetAllInProgressChallenges(r *http.Request, user *User) []Challenge {
 	ctx := appengine.NewContext(r)
 	userKey := GetUserKey(r, user.Email)
 	query := datastore.NewQuery("Challenge").Ancestor(userKey).Filter("ProgressPercent <", 100).Order("ProgressPercent").Order("EndTime")
+
+	challenges := []Challenge{}
+
+	keys, err := query.GetAll(ctx, &challenges)
+	if err != nil {
+		log.Errorf(ctx, "Error fetching the challenges: GetAll: ", err)
+	}
+
+	for i, key := range keys {
+		challenges[i].CID = key.Encode()
+		challenges[i].Status = getCurrentStatus(&challenges[i])
+	}
+	return challenges
+}
+
+//GetAllPublicChallenges returns all the challenges for the user
+func GetAllPublicChallenges(r *http.Request, user *User) []Challenge {
+	ctx := appengine.NewContext(r)
+	userKey := GetUserKey(r, user.Email)
+	query := datastore.NewQuery("Challenge").Ancestor(userKey).Filter("Public =", true).Order("ProgressPercent").Order("EndTime")
 
 	challenges := []Challenge{}
 
