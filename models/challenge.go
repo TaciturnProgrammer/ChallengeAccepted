@@ -39,11 +39,21 @@ func NewChallenge(r *http.Request, user *User) string {
 	activity := r.FormValue("Activity")
 	metric := r.FormValue("Metric")
 	publicBox := r.Form["Public"]
-	log.Infof(ctx, "publicBox:", publicBox)
 
-	if targetString == "" || endTimeString == "" || activity == "" || metric == "" {
+	if targetString == "" {
+		return "Target should not be empty."
+	}
 
-		return "Inputs should not be empty"
+	if endTimeString == "" {
+		return "End time should not be empty."
+	}
+
+	if activity == "" {
+		return "Challenge should not be empty."
+	}
+
+	if metric == "" {
+		return "Metric should not be empty."
 	}
 
 	endTime, err := time.Parse(dateFormat, endTimeString)
@@ -105,23 +115,9 @@ func EditChallenge(r *http.Request) string {
 	keyID := r.FormValue("editId")
 	publicBox := r.Form["Public"]
 
-	public := false
-	if len(publicBox) != 0 {
-		public = true
-	}
-
-	if progressString == "" {
-		return "Please check your info"
-	}
-
-	progress, err := strconv.Atoi(progressString)
-	if err != nil {
-		return "Progress should be a number"
-	}
-
 	challengeKey, err := datastore.DecodeKey(keyID)
 	if err != nil {
-		log.Errorf(ctx, "Error in decoding key", keyID)
+		log.Errorf(ctx, "Challenge.go : EditChallenge: Error in decoding key", keyID)
 		return "Internal error"
 	}
 
@@ -129,16 +125,23 @@ func EditChallenge(r *http.Request) string {
 
 	err = datastore.Get(ctx, challengeKey, &challenge)
 	if err != nil {
-		log.Errorf(ctx, "Error in datastore.Get", err)
+		log.Errorf(ctx, "Challenge.go : EditChallenge: Error in datastore.Get", err)
 		return "Internal error"
 	}
 
-	if challenge.Target >= progress {
-		challenge.Progress = progress
-	} else {
-		return "Progress cannot be greater than Target"
+	if progressString != "" {
+		progress, err := strconv.Atoi(progressString)
+		if err != nil {
+			return "Progress should be a number"
+		}
+		if challenge.Target >= progress {
+			challenge.Progress = progress
+		} else {
+			return "Progress cannot be greater than Target"
+		}
 	}
 
+	//setting end date
 	if endTimeString != "" {
 		endTime, err := time.Parse(dateFormat, endTimeString)
 		if err != nil {
@@ -147,13 +150,18 @@ func EditChallenge(r *http.Request) string {
 		challenge.EndTime = endTime
 	}
 
+	//setting if public
+	if len(publicBox) != 0 {
+		public := true
+		challenge.Public = public
+	}
+
 	challenge.Status = getCurrentStatus(&challenge)
 	challenge.ProgressPercent = int((float64(challenge.Progress) / float64(challenge.Target)) * 100)
-	challenge.Public = public
 
 	_, err = datastore.Put(ctx, challengeKey, &challenge)
 	if err != nil {
-		log.Errorf(ctx, "Error in putting challenge", err)
+		log.Errorf(ctx, "Challenge.go : EditChallenge: Error in putting challenge", err)
 		return "Internal error"
 	}
 
